@@ -190,3 +190,26 @@ fn enabling_auto_copy_when_already_on_keeps_the_pending_copy() {
     f.engine.tick(f.now + Duration::from_secs(2));
     assert_eq!(Some("保留中".to_string()), f.clip.last());
 }
+
+#[test]
+fn nothing_is_logged_as_an_error_before_the_first_history_poll() {
+    let mut f = fixture(Settings::default());
+    f.engine.tick(f.now);
+    f.engine.set_watcher_healthy(true);
+    f.engine.set_delay_seconds(1.0);
+    assert!(!log_text(&f).contains("state-"));
+    f.engine.poll_history(f.now);
+    let log = log_text(&f);
+    assert_eq!(0, log.matches("state-error").count());
+    assert_eq!(1, log.matches("state-active").count());
+}
+
+#[test]
+fn a_failed_first_poll_still_logs_the_error_state_once() {
+    let mut f = fixture(Settings::default());
+    fs::remove_file(&f.history).unwrap();
+    f.engine.tick(f.now);
+    f.engine.poll_history(f.now);
+    f.engine.tick(f.now);
+    assert_eq!(1, log_text(&f).matches("state-error").count());
+}

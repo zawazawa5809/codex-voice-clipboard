@@ -178,13 +178,17 @@ impl<U: Ui> Resident<U> {
             Msg::ToggleAuto => {
                 let enabled = !self.engine.status().auto_enabled;
                 self.set_auto(enabled, now);
+                self.resync_checks();
             }
             Msg::CopyRecent(index) => self.engine.copy_recent(index, now),
             Msg::SetDelay(seconds) => {
                 self.engine.set_delay_seconds(seconds);
                 self.save_settings();
             }
-            Msg::ToggleStartup => self.toggle_startup(),
+            Msg::ToggleStartup => {
+                self.toggle_startup();
+                self.resync_checks();
+            }
             Msg::Uninstall { confirmed } => return self.uninstall(confirmed, true),
             Msg::Cleanup { confirmed } => return self.uninstall(confirmed, false),
             Msg::Quit => return self.quit(),
@@ -210,6 +214,12 @@ impl<U: Ui> Resident<U> {
             _ => self.engine.log("sandbox-command-unknown"),
         }
         Flow::Continue
+    }
+
+    /// A clicked check item has already flipped its own mark, so the next publish must
+    /// reach the tray even if the real state did not change.
+    fn resync_checks(&mut self) {
+        self.published = None;
     }
 
     fn set_auto(&mut self, enabled: bool, now: Instant) {
@@ -405,6 +415,66 @@ pub fn preview(text: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::sandbox::{SandboxAutostart, SandboxClipboard};
+    use std::sync::atomic::AtomicUsize;
+
+    #[derive(Default)]
+    struct FakeUi {
+        shows: AtomicUsize,
+    }
+    impl Ui for FakeUi {
+        fn show(&self, _: &Snapshot) {
+            self.shows.fetch_add(1, Ordering::SeqCst);
+        }
+        fn tray_icons(&self) -> usize {
+            1
+        }
+        fn confirm(&self, _: &str, _: &str) -> bool {
+            false
+        }
+        fn open(&self, _: View) {}
+        fn open_login_items_settings(&self) {}
+        fn launch_os_uninstaller(&self) -> bool {
+            false
+        }
+        fn exit(&self, _: i32) {}
+    }
+
+    fn resident(root: &Path) -> (Resident<FakeUi>, Arc<FakeUi>) {
+        let ui = Arc::new(FakeUi::default());
+        let platform = Platform {
+            clipboard: Box::new(SandboxClipboard::new(root)),
+            autostart: Box::new(SandboxAutostart::new(root)),
+            dark_mode: || false,
+        };
+        let resident = Resident::new(AppPaths::sandbox(root), platform, ui.clone(), std::sync::mpsc::channel(), true);
+        (resident, ui)
+    }
+
+    /// A native check item flips its own mark when clicked, so a toggle that changes
+    /// nothing must still push the real state back to the tray.
+    #[test]
+    fn toggle_clicks_republish_even_when_nothing_changed() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(dir.path().join("startup.txt"), "enabled").unwrap();
+        std::fs::write(dir.path().join("startup-disabled-by-os.txt"), "").unwrap();
+        let (mut resident, ui) = resident(dir.path());
+        resident.refresh_startup();
+        resident.publish();
+        assert_eq!(1, ui.shows.load(Ordering::SeqCst));
+        resident.publish();
+        assert_eq!(1, ui.shows.load(Ordering::SeqCst));
+
+        resident.handle(Msg::ToggleStartup);
+        resident.publish();
+        assert_eq!(StartupView::DisabledByOs, resident.startup_view);
+        assert_eq!(2, ui.shows.load(Ordering::SeqCst));
+
+        resident.handle(Msg::ToggleAuto);
+        resident.handle(Msg::ToggleAuto);
+        resident.publish();
+        assert_eq!(3, ui.shows.load(Ordering::SeqCst));
+    }
 
     #[test]
     fn preview_flattens_lines_and_cuts_by_character() {
