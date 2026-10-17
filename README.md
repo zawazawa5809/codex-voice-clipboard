@@ -42,8 +42,8 @@ Windows と macOS（14 以降・Apple Silicon）で同じ動きをします。Ta
 
 - NSIS のインストーラでユーザー単位に入れます（管理者権限は不要）。署名していないため、発行元不明の警告が出ることがあります。
 - 設定とログは `%LOCALAPPDATA%\CodexVoiceClipboard` です。
-- 自動起動は `HKCU\...\Run\CodexVoiceClipboard` に登録します。「設定 → アプリ → スタートアップ」での無効化（`StartupApproved\Run`）を読み取り、勝手に戻しません。
-- 削除: 「設定 → アプリ」またはメニューの「アンインストール…」から、インストーラ付属のアンインストーラを使います。アンインストーラは先に `--uninstall` でアプリ自身の後片付けを呼びます。
+- 自動起動は `HKCU\...\Run\CodexVoiceClipboard` に、引用符で囲んだ EXE のパスを登録します。「設定 → アプリ → スタートアップ」での無効化（`StartupApproved\Run`）を読み取り、勝手に戻しません。自動起動を OFF にすると、この2つの値を両方消します。
+- 削除: 「設定 → アプリ」またはメニューの「アンインストール…」から、インストーラ付属のアンインストーラを使います。アンインストーラは先に `--uninstall` でアプリ自身の後片付けを呼び、最後に画面表示部品（WebView2）のデータ `%LOCALAPPDATA%\dev.zawa.codexvoiceclipboard` も消します。
 
 ## 開発
 

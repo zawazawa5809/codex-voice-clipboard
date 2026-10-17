@@ -5,6 +5,8 @@ mod cleanup;
 mod paths;
 mod platform;
 mod resident;
+#[cfg(any(target_os = "windows", test))]
+mod run_entry;
 mod sandbox;
 mod tray;
 
@@ -86,14 +88,19 @@ fn run_tauri(paths: AppPaths, args: &Args, _sandbox_lock: Option<std::fs::File>)
                     app.state::<Channel>().send(Msg::Cleanup { confirmed });
                 }
             }))
-            .plugin({
-                let autostart = tauri_plugin_autostart::Builder::new().app_name(paths::APP_DIR);
-                // A LaunchAgent at a fixed name, so `platform.rs` can read its approval state.
-                #[cfg(target_os = "macos")]
-                let autostart = autostart.macos_launcher(tauri_plugin_autostart::MacosLauncher::LaunchAgent);
-                autostart.build()
-            })
             .plugin(tauri_plugin_clipboard_manager::init());
+    }
+
+    // A LaunchAgent at a fixed name, so `platform.rs` can read its approval state.
+    // Windows writes its Run value itself (`run_entry.rs`).
+    #[cfg(target_os = "macos")]
+    if !sandboxed {
+        builder = builder.plugin(
+            tauri_plugin_autostart::Builder::new()
+                .app_name(paths::APP_DIR)
+                .macos_launcher(tauri_plugin_autostart::MacosLauncher::LaunchAgent)
+                .build(),
+        );
     }
 
     let uninstall_only = args.uninstall;
@@ -167,7 +174,13 @@ fn platform_for(app: &tauri::AppHandle, sandboxed: bool) -> Platform {
     {
         Platform {
             clipboard: Box::new(platform::RealClipboard(app.clone())),
+            #[cfg(target_os = "macos")]
             autostart: Box::new(platform::RealAutostart(app.clone())),
+            #[cfg(target_os = "windows")]
+            autostart: match platform::windows_autostart() {
+                Ok(entry) => Box::new(entry),
+                Err(_) => Box::new(platform::UnavailableAutostart),
+            },
             dark_mode: platform::dark_mode,
         }
     }

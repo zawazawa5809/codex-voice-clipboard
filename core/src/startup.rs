@@ -8,6 +8,10 @@ pub trait Autostart {
     fn set_enabled(&mut self, enabled: bool) -> io::Result<()>;
     /// Whether the user switched the item off in OS settings. `None` when unknown.
     fn disabled_by_os(&self) -> Option<bool>;
+    /// Uninstall only: remove anything the OS kept about the item even while it is off.
+    fn remove_leftovers(&mut self) -> io::Result<()> {
+        Ok(())
+    }
 }
 
 pub struct StartupController<A: Autostart> {
@@ -45,5 +49,8 @@ impl<T: Autostart + ?Sized> Autostart for Box<T> {
     }
     fn disabled_by_os(&self) -> Option<bool> {
         (**self).disabled_by_os()
+    }
+    fn remove_leftovers(&mut self) -> io::Result<()> {
+        (**self).remove_leftovers()
     }
 }

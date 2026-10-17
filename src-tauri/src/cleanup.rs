@@ -29,7 +29,7 @@ impl UninstallOperations for Cleanup<'_> {
         if self.autostart.is_enabled()? {
             self.autostart.set_enabled(false)?;
         }
-        Ok(())
+        self.autostart.remove_leftovers()
     }
 
     /// Only files this app wrote. History, the clipboard file and the sandbox root stay.
@@ -117,6 +117,38 @@ mod tests {
         for kept in ["history.jsonl", "clipboard.txt"] {
             assert!(root.join(kept).exists(), "{kept} was removed");
         }
+    }
+
+    #[derive(Default)]
+    struct OffWithLeftovers {
+        removed: bool,
+    }
+
+    impl Autostart for OffWithLeftovers {
+        fn is_enabled(&self) -> io::Result<bool> {
+            Ok(false)
+        }
+        fn set_enabled(&mut self, _enabled: bool) -> io::Result<()> {
+            panic!("already off");
+        }
+        fn disabled_by_os(&self) -> Option<bool> {
+            None
+        }
+        fn remove_leftovers(&mut self) -> io::Result<()> {
+            self.removed = true;
+            Ok(())
+        }
+    }
+
+    #[test]
+    fn cleanup_removes_os_leftovers_even_when_startup_is_already_off() {
+        let dir = tempfile::tempdir().unwrap();
+        let paths = AppPaths::sandbox(dir.path());
+        let mut autostart = OffWithLeftovers::default();
+        let mut stop = || true;
+        uninstall::execute(&mut Cleanup { paths: &paths, autostart: &mut autostart, stop: &mut stop, delete_app: false })
+            .unwrap();
+        assert!(autostart.removed);
     }
 
     #[test]
