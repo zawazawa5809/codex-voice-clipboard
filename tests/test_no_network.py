@@ -25,7 +25,7 @@ class NoNetworkTests(unittest.TestCase):
                 self.assertEqual(set(), built_crates(target) & set(FORBIDDEN))
 
     def test_csp_allows_only_self_and_ipc(self):
-        conf = json.loads((ROOT / "src-tauri" / "tauri.conf.json").read_text())
+        conf = json.loads((ROOT / "src-tauri" / "tauri.conf.json").read_text(encoding="utf-8"))
         csp = conf["app"]["security"]["csp"]
         directives = dict(
             (part.split()[0], part.split()[1:]) for part in csp.split(";") if part.strip()
