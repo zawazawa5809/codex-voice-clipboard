@@ -54,6 +54,9 @@ mod tests {
         parse(args.iter().map(|s| s.to_string()))
     }
 
+    // "/tmp/x" has no drive, so Windows does not count it as absolute.
+    const ABS: &str = if cfg!(windows) { r"C:\x" } else { "/tmp/x" };
+
     #[test]
     fn no_arguments_is_the_real_resident() {
         assert_eq!(Ok(Args::default()), p(&[]));
@@ -61,7 +64,7 @@ mod tests {
 
     #[test]
     fn sandbox_needs_an_absolute_path() {
-        assert_eq!(Some(PathBuf::from("/tmp/x")), p(&["--sandbox", "/tmp/x"]).unwrap().sandbox);
+        assert_eq!(Some(PathBuf::from(ABS)), p(&["--sandbox", ABS]).unwrap().sandbox);
         assert_eq!(Err(ArgError), p(&["--sandbox", "relative"]));
         assert_eq!(Err(ArgError), p(&["--sandbox"]));
     }
@@ -69,7 +72,7 @@ mod tests {
     #[test]
     fn no_watcher_is_sandbox_only() {
         assert_eq!(Err(ArgError), p(&["--no-watcher"]));
-        assert!(p(&["--sandbox", "/tmp/x", "--no-watcher"]).unwrap().no_watcher);
+        assert!(p(&["--sandbox", ABS, "--no-watcher"]).unwrap().no_watcher);
     }
 
     #[test]

@@ -62,7 +62,7 @@ jobs:
 
       # Runs after the build so tauri::generate_context! finds ../dist.
       - name: Rust tests
-        run: cargo test --workspace
+        run: cargo test --workspace --no-fail-fast
 
       - name: Static tests (icons, no network)
         run: uv run --with pillow python -m unittest tests/test_icons.py tests/test_no_network.py
