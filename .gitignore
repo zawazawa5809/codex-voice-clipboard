@@ -1,0 +1,7 @@
+**/bin/
+**/obj/
+artifacts/
+work/
+.vs/
+.review-gate/
+*.user

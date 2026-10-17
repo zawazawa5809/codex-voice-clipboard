@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="src/CodexVoiceClipboard.Core/CodexVoiceClipboard.Core.csproj" />
+  <Project Path="src/CodexVoiceClipboard/CodexVoiceClipboard.csproj" />
+  <Project Path="tests/CodexVoiceClipboard.Tests/CodexVoiceClipboard.Tests.csproj" />
+</Solution>
