@@ -1,8 +1,9 @@
 """Render the approved A concept from editable geometry; no image service at runtime.
 
-Development only: Python 3 + Pillow. Checked-in ICO files are embedded in the EXE.
-Each Windows size is rendered independently before supersampling, rather than
-letting Windows scale a single large PNG down to sixteen pixels.
+Development only: Python 3 + Pillow. Checked-in PNG files are embedded in the app.
+Each tray size is rendered independently before supersampling, rather than
+letting the OS scale a single large PNG down. The app icon source is turned into
+the bundle icons with `pnpm tauri icon src-tauri/icons/app-source.png`.
 """
 
 import argparse
@@ -115,10 +116,15 @@ def write_ico(path, state="active", theme="dark", app=False):
     )
 
 
+TRAY_SIZES = (32, 64)  # Windows tray (16 pt at 2x), macOS menu bar (18 pt at 2x and above)
+
+
 def preview(path):
+    font_path = pathlib.Path("C:/Windows/Fonts/segoeui.ttf")
+    if not font_path.exists():
+        font_path = pathlib.Path("/System/Library/Fonts/Supplemental/Arial.ttf")
     sheet = Image.new("RGB", (1080, 680), "#f2f4f3")
     draw = ImageDraw.Draw(sheet)
-    font_path = pathlib.Path("C:/Windows/Fonts/segoeui.ttf")
     title = ImageFont.truetype(str(font_path), 30)
     normal = ImageFont.truetype(str(font_path), 20)
     small = ImageFont.truetype(str(font_path), 15)
@@ -172,17 +178,16 @@ def preview(path):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--preview",
-        type=pathlib.Path,
-        default=ROOT / "artifacts" / "icon-preview-a.png",
-    )
+    parser.add_argument("--preview", type=pathlib.Path, default=None)
     args = parser.parse_args()
-    assets = ROOT / "src" / "CodexVoiceClipboard" / "Assets"
-    assets.mkdir(parents=True, exist_ok=True)
-    write_ico(assets / "app.ico", app=True)
+    icons = ROOT / "src-tauri" / "icons"
+    tray = icons / "tray"
+    tray.mkdir(parents=True, exist_ok=True)
+    render(1024, app=True).save(icons / "app-source.png")
     for state in ("active", "paused", "error"):
         for theme in ("dark", "light"):
-            write_ico(assets / f"{state}-{theme}.ico", state, theme)
-    preview(args.preview)
-    print(f"Generated 7 multi-resolution ICO assets and {args.preview}")
+            for size in TRAY_SIZES:
+                render(size, state, theme).save(tray / f"{state}-{theme}-{size}.png")
+    if args.preview:
+        preview(args.preview)
+    print(f"Generated app-source.png and {6 * len(TRAY_SIZES)} tray PNGs in {icons}")
