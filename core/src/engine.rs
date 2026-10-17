@@ -62,6 +62,8 @@ pub struct Engine<C: Clipboard> {
     log: SafeLog,
     history_error: bool,
     watcher_healthy: bool,
+    /// Until the first poll the history is only presumed unreadable, so no state is logged.
+    polled: bool,
     logged_state: Option<State>,
 }
 
@@ -76,6 +78,7 @@ impl<C: Clipboard> Engine<C> {
             log,
             history_error: true,
             watcher_healthy: true,
+            polled: false,
             logged_state: None,
         }
     }
@@ -100,6 +103,7 @@ impl<C: Clipboard> Engine<C> {
                 self.history_error = true;
             }
         }
+        self.polled = true;
         self.note_state();
     }
 
@@ -188,6 +192,9 @@ impl<C: Clipboard> Engine<C> {
     }
 
     fn note_state(&mut self) {
+        if !self.polled {
+            return;
+        }
         let state = self.status().state;
         if self.logged_state != Some(state) {
             self.logged_state = Some(state);
