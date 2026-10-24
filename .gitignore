@@ -5,3 +5,8 @@ src-tauri/gen/
 artifacts/
 work/
 .review-gate/
+
+# Local-only notes (not published)
+AGENTS.md
+VERIFICATION.md
+docs/spec/

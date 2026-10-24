@@ -29,7 +29,7 @@ Codex Desktop で音声入力を一度でも使い、上の履歴ファイルが
 ### macOS
 
 1. `CodexVoiceClipboard_<版>_macos_arm64.dmg` を開き、`Codex Voice Clipboard.app` を「アプリケーション」フォルダへドラッグします。
-2. アプリを開きます。「Apple は検証できませんでした」と出たら「完了」で閉じます。
+2. アプリを開きます。「"Codex Voice Clipboard" は開いていません」という画面が出たら、「完了」を押して閉じます（「ゴミ箱に入れる」は押さないでください）。
 3. システム設定 →「プライバシーとセキュリティ」を開き、下の方にある「このまま開く」を押して、パスワードを入れます。
 4. メニューバーにアイコンが出ます（Dock には出ません）。
 
@@ -95,7 +95,7 @@ macOS 15 以降は、右クリック →「開く」では警告を越えられ�
 
 ## 開発
 
-Tauri 2 で作っています（裏の処理は Rust、設定などの小さな画面は TypeScript）。仕様の正本は [docs/spec/cross-platform.md](docs/spec/cross-platform.md)、実機での確認記録は [VERIFICATION.md](VERIFICATION.md) です。
+Tauri 2 で作っています（裏の処理は Rust、設定などの小さな画面は TypeScript）。
 
 必要なもの: Rust（stable）、Node.js と pnpm、Python 3 と uv（テスト・アイコン生成）。
 
