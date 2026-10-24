@@ -9,12 +9,13 @@ on:
   pull_request:
     paths-ignore: ["docs/**", "**/*.md"]
   workflow_dispatch:
+  workflow_call:
 
 permissions:
   contents: read
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: windows-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -64,8 +65,8 @@ jobs:
       - name: Rust tests
         run: cargo test --workspace --no-fail-fast
 
-      - name: Static tests (icons, no network)
-        run: uv run --with pillow python -m unittest tests/test_icons.py tests/test_no_network.py
+      - name: Static tests (icons, no network, installer hooks, release)
+        run: uv run --with pillow python -m unittest tests/test_icons.py tests/test_no_network.py tests/test_installer_hooks.py tests/test_release.py
 
       - name: Sandbox integration tests
         # TEMP points at runner.temp so the sandbox evidence folder can be uploaded.

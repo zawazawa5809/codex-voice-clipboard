@@ -30,7 +30,8 @@
     "category": "Utility",
     "shortDescription": "Codex の音声文字起こしをクリップボードへ写す常駐アプリ",
     "macOS": {
-      "minimumSystemVersion": "14.0"
+      "minimumSystemVersion": "14.0",
+      "signingIdentity": "-"
     },
     "windows": {
       "nsis": {
