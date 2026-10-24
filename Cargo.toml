@@ -1,0 +1,13 @@
+[workspace]
+resolver = "2"
+members = ["core", "src-tauri"]
+
+[workspace.package]
+edition = "2021"
+rust-version = "1.89"
+license = "MIT"
+
+# Proc-macro dylibs stripped by the default `strip = "debuginfo"` fail to load on
+# macOS 27 ("mis-aligned LINKEDIT string pool"), so build-time crates are left unstripped.
+[profile.release.build-override]
+strip = "none"

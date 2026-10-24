@@ -1,98 +1,141 @@
 # Codex Voice Clipboard
 
-Windows x64 / C# / .NET 10 / Windows Forms の小型タスクトレイアプリです。Codex Desktopが保存した音声文字起こしを、Windowsクリップボードから手動で貼り付けて復旧できます。Codex本体は改変しません。
+Codex Desktop の音声入力で話した内容を、自動でクリップボードへ写す常駐アプリです。Codex の入力欄から文字起こしが消えてしまっても、別の場所に Ctrl+V / ⌘V で貼り付けて取り戻せます。Windows と macOS で同じように動きます。
 
-## 配布物と起動
+> **English summary** — A tray / menu-bar app that copies each new Codex Desktop voice transcript to the clipboard, so you can paste it anywhere if it gets lost. Download the Windows installer or the macOS `.dmg` from [Releases](https://github.com/zawazawa5809/codex-voice-clipboard/releases/latest). Neither is code-signed: on Windows choose "More info → Run anyway"; on macOS open it once, then click "Open Anyway" in System Settings → Privacy & Security. It reads `~/.codex/transcription-history.jsonl` read-only, never writes transcripts to logs or settings, and makes no network connections. Unofficial; not affiliated with OpenAI.
 
-配布物は `CodexVoiceClipboard.exe` 1個です。ランタイム同梱のself-contained single-file WinExeで、コンソールも管理者権限も必要ありません。署名していないためWindowsが発行元不明の警告を出す場合があります。Windows 10/11 x64を対象とし、この実装の実機検証は実行したWindows環境に限ります。
+**非公式のツールです。** OpenAI とは関係がありません。Codex が手元に保存する履歴ファイル（`~/.codex/transcription-history.jsonl`）を読むだけで、Codex 本体には手を加えません。このファイルの形式は公開された仕様ではないため、Codex の更新で読めなくなることがあります。
 
-通常起動すると `%USERPROFILE%\.codex\transcription-history.jsonl` を読み取り専用で監視します。起動時点の履歴は手動コピー用に取り込み、自動コピーしません。別アプリへの貼り付け操作は行いません。必要なアプリへ移動してCtrl+Vで貼り付けてください。
+## 動作環境
 
-## インストール（承認後に実行）
+| OS | 対応 |
+|---|---|
+| Windows | Windows 10 / 11（x64） |
+| macOS | macOS 14 以降、Apple Silicon（M1 以降）。Intel Mac では動きません |
 
-Win+Rで「ファイル名を指定して実行」を開き、次のように配布EXEの絶対パスと引数を入力します。コンソールは表示されません。PowerShellを使う場合は先頭に `&` を付けます。
+Codex Desktop で音声入力を一度でも使い、上の履歴ファイルができていることが前提です。
 
-```text
-"C:\path\to\CodexVoiceClipboard.exe" --install
+## インストール
+
+[Releases](https://github.com/zawazawa5809/codex-voice-clipboard/releases/latest) から自分の OS のファイルをダウンロードします。どちらも**コード署名をしていない**ため、初回だけ OS の警告を越える操作が要ります。ダウンロードが途中で壊れていないかは、同じページの `SHA256SUMS.txt` と照らし合わせて確かめられます。
+
+### Windows
+
+1. `CodexVoiceClipboard_<版>_windows_x64-setup.exe` を実行します。
+2. 「Windows によって PC が保護されました」と出たら、「詳細情報」→「実行」を押します。
+3. インストーラの指示に従います。自分のユーザーだけに入り、管理者権限は要りません。
+4. スタートメニューから「Codex Voice Clipboard」を起動すると、タスクトレイにアイコンが出ます。
+
+### macOS
+
+1. `CodexVoiceClipboard_<版>_macos_arm64.dmg` を開き、`Codex Voice Clipboard.app` を「アプリケーション」フォルダへドラッグします。
+2. アプリを開きます。「Apple は検証できませんでした」と出たら「完了」で閉じます。
+3. システム設定 →「プライバシーとセキュリティ」を開き、下の方にある「このまま開く」を押して、パスワードを入れます。
+4. メニューバーにアイコンが出ます（Dock には出ません）。
+
+macOS 15 以降は、右クリック →「開く」では警告を越えられません。上の 3 の手順を使ってください。
+
+## 使い方
+
+起動したら、あとは Codex で普段どおり音声入力するだけです。新しい文字起こしを見つけてから 2 秒後に、クリップボードへ写します。アプリを起動する前からあった履歴は自動ではコピーせず、メニューから選んでコピーできます。
+
+アイコンの色で状態が分かります。
+
+| アイコン | 状態 |
+|---|---|
+| 通常 | 監視中 |
+| 琥珀（二本線） | 自動コピーを OFF にしている |
+| 赤（感嘆符） | 履歴ファイルが無い・読めない、またはコピーに失敗した |
+
+メニューはトレイ（Windows）／メニューバー（macOS）のアイコンから開きます。
+
+| 項目 | 動き |
+|---|---|
+| 自動コピー | OFF にすると待機中のコピーも取り消す。監視と最近10件の更新は続け、ON に戻しても停止中の履歴はコピーしない |
+| 最新をコピー／最近10件からコピー | 待たずにすぐコピーする |
+| コピーまでの待機時間 | 0〜60 秒、0.1 秒刻み。変えると待機中のコピーを取り消す |
+| ログイン時に自動起動 | 初期は OFF。OS 側で無効にされていたら勝手に戻さず、OS の設定を開くか尋ねる |
+| ログを表示 | 時刻とイベント名だけのログ。本文は書かない |
+| クリップボード上書きについて | 初回起動時にも出す注意 |
+| アンインストール… | 下の「削除」 |
+| 終了 | 監視と常駐を止める。自動起動の設定は変えない |
+
+## 気をつけること
+
+- **待機中（既定 2 秒）に別の内容をコピーすると、文字起こしで上書きされます。** 困るときは自動コピーを OFF にして、必要なときだけメニューからコピーしてください。一度コピーした履歴を繰り返しコピーすることはありません。
+- 文字起こしの本文は、クリップボードとメモリ上の最近10件にだけ置きます。ログや設定ファイルには書きません。
+- このアプリはネットワーク通信をしません。自動更新もありません。新しい版は Releases から入れ直してください。
+- OS のクリップボード同期（macOS のユニバーサルクリップボード、Windows のクリップボード履歴・クラウド同期）が有効だと、本文が他の機器や履歴に渡ることがあります。このアプリはそれらの設定を変えません。
+
+## 困ったとき
+
+| 症状 | 確かめること |
+|---|---|
+| アイコンがずっと赤い | Codex Desktop で音声入力を一度使ったか。履歴ファイルが作られると自動で通常に戻る |
+| コピーされない | 自動コピーが OFF（琥珀）になっていないか。「ログを表示」で `clipboard-failed` が出ていないか |
+| macOS で「壊れているため開けません」と出る | ダウンロードが途中で壊れた可能性がある。`SHA256SUMS.txt` と照らし合わせ、取り直す |
+| Codex の更新後に動かなくなった | 履歴ファイルの形式が変わった可能性がある。Issue で知らせてください |
+
+## 削除
+
+どちらの OS も、メニューの「アンインストール…」から消せます。自動起動の登録・設定・ログを消したあと、アプリ本体も消して終了します。Codex の履歴やクリップボードの中身は消しません。
+
+- **Windows**: 「設定 → アプリ → インストールされているアプリ」からも削除できます。
+- **macOS**: アプリを「アプリケーション」か `~/Applications` に置いたときだけ、本体も自分で消します。それ以外の場所に置いたときは、終了してから `.app` をゴミ箱へ入れてください。
+
+アプリが作るものは次のとおりです。
+
+| | Windows | macOS |
+|---|---|---|
+| 設定・ログ | `%LOCALAPPDATA%\CodexVoiceClipboard` | `~/Library/Application Support/CodexVoiceClipboard`、`~/Library/Logs/CodexVoiceClipboard` |
+| 自動起動（ON のときだけ） | `HKCU\Software\Microsoft\Windows\CurrentVersion\Run\CodexVoiceClipboard` | `~/Library/LaunchAgents/CodexVoiceClipboard.plist` |
+| 画面表示部品のデータ | `%LOCALAPPDATA%\dev.zawa.codexvoiceclipboard` | — |
+
+自動起動は、Windows の「設定 → アプリ → スタートアップ」、macOS のシステム設定 →「一般」→「ログイン項目」でも無効にできます。
+
+## 開発
+
+Tauri 2 で作っています（裏の処理は Rust、設定などの小さな画面は TypeScript）。仕様の正本は [docs/spec/cross-platform.md](docs/spec/cross-platform.md)、実機での確認記録は [VERIFICATION.md](VERIFICATION.md) です。
+
+必要なもの: Rust（stable）、Node.js と pnpm、Python 3 と uv（テスト・アイコン生成）。
+
+```bash
+pnpm install
+cargo test --workspace
+pnpm tauri build --bundles app,dmg --target aarch64-apple-darwin
+uv run --no-project python tests/integration.py "target/aarch64-apple-darwin/release/bundle/macos/Codex Voice Clipboard.app"
+uv run --with pillow python -m unittest tests/test_icons.py tests/test_no_network.py tests/test_installer_hooks.py tests/test_release.py
 ```
 
-確認画面で「はい」を選ぶと、`%LOCALAPPDATA%\Programs\CodexVoiceClipboard\CodexVoiceClipboard.exe` に配置し、HKCUのアンインストール情報を登録します。既に起動中なら終了を要求し、停止できなければ変更を中止します。インストールだけでは起動しません。完了後に配置先のEXEを開いてください。初期状態では自動起動OFF、自動コピーON、待機2秒です。
+Windows 版は Windows 上でしか作れません（`pnpm tauri build --bundles nsis`）。手元に Windows が無ければ GitHub Actions の `windows` ワークフローを使います。
 
-レジストリの利用箇所はユーザー単位の以下だけです。
+- `core/` — OS に依存しない中身（履歴の読み取り、自動コピーの予約、ログ、設定）。テストの大半はここ。
+- `src-tauri/` — トレイ、クリップボード、自動起動、多重起動防止。OS に触る部分はすべて差し替え可能な窓口（Rust のトレイト）を通し、本物と `--sandbox` 用を起動時に選ぶ。
+- `src/` — 待機時間・ログ・注意の小さな画面（TypeScript）。
+- アイコンは `scripts/generate_icons.py` で作り、`pnpm tauri icon src-tauri/icons/app-source.png` で配布用に変換します。
 
-- `HKCU\Software\Microsoft\Windows\CurrentVersion\Run\CodexVoiceClipboard`：トレイで自動起動ONにした場合のみ登録。
-- `HKCU\Software\Microsoft\Windows\CurrentVersion\Uninstall\CodexVoiceClipboard`：インストールされたアプリ一覧への登録。
-- Windowsが管理する `HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run\CodexVoiceClipboard`：無効状態を読み取り、アンインストール時に自アプリの値だけ削除。
-- `HKCU\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize\SystemUsesLightTheme`：起動時にトレイの明暗テーマを読み取るだけで、変更しません。
+### 隔離テスト用の引数
 
-Windows「設定 → アプリ → スタートアップ」またはタスクマネージャーで無効化できます。Windows側の無効化を勝手に解除しません。その状態でトレイの自動起動項目を押すと、Windows設定を開く確認を表示します。自動起動ON/OFFとアプリの終了は独立しています。ショートカットや追加の常駐サービスは作りません。
+| 引数 | 意味 |
+|---|---|
+| `--sandbox <絶対パス>` | 履歴・設定・クリップボード・自動起動・アプリ本体を、そのフォルダ内のファイルに置き換える。本物のクリップボードやログイン項目には触れない |
+| `--no-watcher` | `--sandbox` 専用。変更通知を使わず、2 秒ごとの定期確認だけで動かす |
+| `--uninstall` | アプリが作ったもの（自動起動の登録・設定・ログ）を消す。確認を出す。`--sandbox` と一緒なら確認を省き、そのフォルダの中だけを消す |
 
-## トレイメニュー
+`tests/integration.py` は `--sandbox` で起動したアプリだけを相手にし、合成した履歴で16項目を確かめます。テスト用のコピー先 `clipboard.txt` には合成した本文が残ります。
 
-- クリップボード＋マイク：監視中。黄／琥珀色のマイク内の二本線：自動コピーOFF。赤いマイク内の感嘆符：履歴の不在・読み取り失敗、監視通知のエラー、またはコピー失敗。状態は右クリックメニューにも表示します。起動時のWindowsタスクバーの明暗テーマに合わせ、白または濃いグレーの透過アイコンを選びます。
-- 「自動コピー ON/OFF」：OFFで予約済みコピーも取り消します。停止中も監視と最近10件の更新は続き、手動コピーできます。再開時に停止中の履歴を自動コピーしません。
-- 「最新の文字起こしをコピー」／「最近10件からコピー」：待機なしで選択内容をコピーします。競合時はリトライします。ダブルクリックでも最新をコピーできます。
-- 「コピーまでの待機時間」：0～60秒、0.1秒単位。変更時は予約を取り消します。
-- 「Windowsログイン時に自動起動」：インストール済みEXEがある場合に利用できます。
-- 「ログを表示」：本文を含まないイベントログを表示します。
-- 「終了」：トレイアイコンを消し、監視・タイマー・常駐プロセスを終了します。自動起動設定は変更しません。
-- 「アンインストール」：確認画面を表示してから停止と削除を行います。
+### リリースの出し方
 
-## 停止・削除
+1. `src-tauri/tauri.conf.json`・`package.json`・`src-tauri/Cargo.toml`・`core/Cargo.toml` の `version` を同じ値に上げる（`tests/test_release.py` が揃っているかを確かめる）。
+2. `v<版>` のタグを付けて push する。
+3. `release` ワークフローが両 OS でビルドとテストを通し、インストーラ・`.dmg`・`SHA256SUMS.txt` を付けた**下書き**の Release を作る。中身を確かめてから、GitHub 上で公開する。
 
-一時的に自動コピーだけ止めるには自動コピーをOFFにします。常駐を止めるには「終了」を選びます。次回ログイン時にも起動させたくない場合は、終了前に自動起動をOFFにするかWindowsのスタートアップ設定で無効化してください。
+### まだ確かめていないこと
 
-削除方法は次のいずれかです。どの経路でも確認画面を表示し、キャンセルできます。
+- ログイン時の実際の自動起動（両 OS）。
+- macOS の `.app` の自己削除。
+- Releases から落とした `.dmg` を、別の Mac で初めて開く流れ。
 
-1. トレイから「アンインストール」。
-2. Windows「設定 → アプリ → インストールされているアプリ → Codex Voice Clipboard → アンインストール」。
-3. インストール先のEXEを `--uninstall` 引数で実行。
+## ライセンス
 
-削除処理は一時フォルダにコピーした同じEXEから実行し、常駐の終了を待って、自動起動・アプリ登録・インストールフォルダ・設定とログを削除します。停止できない場合は削除を中止します。一時EXEの後片付けに、ウィンドウを表示しない短時間のWindows PowerShellプロセスを使います。常駐サービスや管理者権限は不要です。PowerShellが組織のポリシーで起動禁止の場合、一時フォルダ `%TEMP%\CodexVoiceClipboard-remove-<GUID>` のみ残る可能性があります。アプリが停止していることを確認して、その該当フォルダだけ手動削除できます。
-
-手動で削除する場合は、まずトレイから自動起動OFF → 終了の順に操作し、インストールフォルダを削除してください。Windowsのアプリ一覧登録も消すには通常のアンインストールを推奨します。強制的に終了したい場合はタスクマネージャーから `CodexVoiceClipboard.exe` のタスクを終了できます。
-
-Codexの履歴やCodex本体は削除・変更しません。既にクリップボードへコピーした内容も消しません。
-
-## 上書きとプライバシー
-
-**検出からコピーまでの待機中に別の内容をコピーすると、その内容が文字起こしで上書きされる可能性があります。** 初回起動時とトレイの説明項目でも表示します。競合リトライ中も同じリスクがあります。必要なときは自動コピーOFFで手動復旧してください。コピー後に別の内容をコピーした場合、同じ履歴を定期的に再コピーすることはありません。新たな文字起こしは新たに自動コピーします。
-
-本文はクリップボードと最近10件のメモリ内表示に使い、ログ・設定ファイルには保存しません。IDは重複防止のため実行中のみメモリに保持します。アプリ自体はネットワーク通信しません。OSのクリップボード履歴・クラウド同期が有効な場合、そのWindows設定に従って本文が保存・同期される可能性があります。このアプリはそれらの設定を変更しません。
-
-設定と本文を含まないログは `%LOCALAPPDATA%\CodexVoiceClipboard` に保存します。ログは512 KiB超で1世代にローテーションします。本文を含むCodexの元JSONLは読み取り専用で開きます。
-
-## 監視と復旧の仕様
-
-FileSystemWatcherの変更・作成・削除・名前変更を通知として利用し、2秒ごとの定期確認で通知の取りこぼしを補います。読み取りはバックグラウンドで直列実行し、クリップボード操作はWinFormsのSTAスレッドで実行します。待機時間は**検出時から**計測するため、定期確認だけで検出した場合はファイル更新から既定で最大およそ4秒です。
-
-ファイルIDの変更と短縮、既読位置直前64バイトの変化を検出して読み直し、同じIDを再処理しません。JSONLの最後が不完全なら保持して次回追記時に再解析し、完成したJSONは末尾改行がなくても扱えます。不正な完結行は読み飛ばしてイベントコードだけ記録します。1レコードは16 MiBまで、`id` と `text` が空でないJSON文字列である必要があります。1回の読み取り中に複数の新規履歴が見つかった場合、自動コピーは最新1件に集約し、最近10件から他の履歴を手動コピーできます。新しい検出は待機中の古い自動コピーを置き換えます。
-
-クリップボードの競合は250ms間隔で最大8回試します。失敗後は赤アイコンになり、手動コピーまたは次の新規履歴で再試行できます。監視対象がない場合も赤アイコンになり、ファイルが作成されると自動復帰します。初回からロックされていた履歴は、初めて読めた時点の内容を起動前履歴として扱い、自動コピーしません。
-
-## ビルド・テスト
-
-.NET SDK 10.0.402（互換パッチ可）とWindows x64を使います。アプリ実行時の外部依存はありません。ビルド時はMicrosoftのランタイム復元が必要になる場合があります。
-
-```powershell
-.\scripts\build.ps1
-# または
-dotnet run --project tests/CodexVoiceClipboard.Tests -c Release
-dotnet publish src/CodexVoiceClipboard -c Release -o artifacts/publish
-python tests/integration.py artifacts/publish/CodexVoiceClipboard.exe
-```
-
-採用アイコンはA案「クリップボード＋マイク」です。16/20/24/32/40/48/64/256pxを含むICOをEXEへ埋め込み、外部画像ファイルは実行時に不要です。形状ソースは `scripts/generate_icons.py` です。再生成・画像形式テストには開発時だけPythonとPillowを使用します。
-
-```powershell
-python scripts/generate_icons.py
-python tests/test_icons.py
-```
-
-テストは追加のテストライブラリを要しない実行形式で、失敗時は終了コード1を返します。TDDでコアのテストを先に作成し、未実装のコンパイル失敗を確認してから実装しました。
-
-`--sandbox <絶対パス>` は開発テスト専用です。履歴・設定・コピー先・自動起動・アプリ登録を指定フォルダ内のテストファイルに置き換えます。実際のCodex履歴・Windowsクリップボード・レジストリを利用しません。隔離モードだけではアンインストール確認を省略して自動検証します。`--no-watcher` は隔離モード専用で定期確認だけの復旧検証に使います。通常利用ではこれらを指定しないでください。テスト用コピー先だけは、テスト文字起こし本文を `clipboard.txt` に保存します。
-
-GUIの見た目、実際のClipboard.SetTextによる貼り付け、Windowsのスタートアップ一覧での無効化、ログイン時起動、実際のアプリ一覧からの削除、実Codex履歴との連携は、別途承認後の実機確認が必要です。テストの通過をこれらの確認済みと扱わないでください。
-
-参考: [Microsoft .NET 10](https://dotnet.microsoft.com/en-us/download/dotnet/10.0)、[Windows Startup apps](https://learn.microsoft.com/en-us/windows/win32/w8cookbook/startup-apps)。
+[MIT](LICENSE)

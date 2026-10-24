@@ -1,0 +1,87 @@
+# Builds the macOS app (Apple Silicon) and runs the sandbox tests on a real macOS runner.
+# Only --sandbox instances run here: no real clipboard, login items or Codex history.
+name: macos
+
+on:
+  push:
+    branches: [main]
+    paths-ignore: ["docs/**", "**/*.md"]
+  pull_request:
+    paths-ignore: ["docs/**", "**/*.md"]
+  workflow_dispatch:
+  workflow_call:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: macos-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    runs-on: macos-15
+    timeout-minutes: 45
+    env:
+      APP: target/aarch64-apple-darwin/release/bundle/macos/Codex Voice Clipboard.app
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+        with:
+          toolchain: stable
+          targets: aarch64-apple-darwin
+
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+        with:
+          version: 11
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+        with:
+          enable-cache: false
+
+      - name: Install frontend dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build app and dmg
+        run: pnpm tauri build --bundles app,dmg --target aarch64-apple-darwin
+
+      # An unsigned bundle is reported as "damaged" after download; the ad-hoc seal must hold.
+      - name: Verify ad-hoc signature
+        run: codesign --verify --deep --strict --verbose=2 "$APP"
+
+      - name: Upload dmg
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: macos-dmg
+          path: target/aarch64-apple-darwin/release/bundle/dmg/*.dmg
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Rust tests
+        run: cargo test --workspace --no-fail-fast
+
+      - name: Static tests (icons, no network, installer hooks, release)
+        run: uv run --with pillow python -m unittest tests/test_icons.py tests/test_no_network.py tests/test_installer_hooks.py tests/test_release.py
+
+      - name: Sandbox integration tests
+        run: |
+          mkdir -p logs
+          uv run python tests/integration.py "$APP" 2>&1 | tee logs/integration.log
+          test "${PIPESTATUS[0]}" -eq 0
+
+      - name: Upload integration log
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: macos-integration-log
+          path: logs/integration.log
+          if-no-files-found: warn
+          retention-days: 14
