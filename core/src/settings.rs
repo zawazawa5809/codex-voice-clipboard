@@ -8,7 +8,10 @@ use serde::{Deserialize, Serialize};
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct Settings {
+    // Aliases read the PascalCase keys the .NET version left in the same file.
+    #[serde(alias = "AutoCopy")]
     pub auto_copy: bool,
+    #[serde(alias = "DelaySeconds")]
     pub delay_seconds: f64,
     pub risk_notice_seen: bool,
 }
